@@ -12,6 +12,10 @@ function run() {
         return help();
     }
 
+    if (args.c || args.clean) {
+        return clearStoredReports();
+    }
+
     try {
         const output = compile(args.host, args.lib);
         const reportFileName = storeCompilationReport(output[2]);
@@ -26,6 +30,7 @@ run();
 function help() {
     console.log('\nRemotely compiles your project on an IBM i and returns the result:\n\n' +
         '-h        Display help\n' +
+        '-c        Clear (delete) old compilation reports before running\n' +
         '-e        Use environment variables for HOST and LIB arguments\n' +
         '--host    Set the remote host to compile on. Compatible with openssh configured hosts\n' +
         '--lib     The Library on the IBM i where your objects will be created\n\n' +
@@ -113,4 +118,8 @@ function displaySummaryMessage(output, reportFileName) {
 
 function getMaxErrorSeverity(compilerOutput) {
     return parseInt(compilerOutput.toString().match(/(\d{2}) highest severity/g).pop());
+}
+
+function clearStoredReports() {
+    return execSync('rm icompile-reports/*');
 }
