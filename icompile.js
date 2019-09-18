@@ -123,5 +123,5 @@ function getMaxErrorSeverity(compilerOutput) {
 }
 
 function clearStoredReports() {
-    return execSync('rm icompile-reports/*');
+    return new Promise(r => exec('rm icompile-reports/*', { stdio: 'pipe' }, (err, stdout, stderr) => r({err, stdout, stderr})));
 }
