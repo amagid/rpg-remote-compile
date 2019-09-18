@@ -26,7 +26,7 @@ function help() {
         '--host    Set the remote host to compile on. Compatible with openssh configured hosts\n' +
         '--lib     The Library on the IBM i where your objects will be created\n\n' +
         'Usage Example:\n' +
-        'node icompile --host=iseries-stg-root --lib=TUTORIAL1');
+        'node icompile.js --host=iseries-stg-root --lib=TUTORIAL1');
 }
 
 function compile(host, lib) {
