@@ -1,3 +1,3 @@
       /free
-           dsply 'Hello World Demo!!!';
+           dsply name;
            return;

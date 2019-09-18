@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const {
-    execSync
-} = require('child_process');
+const { exec, execSync } = require('child_process');
 
-function run() {
+async function run() {
     const args = getArgs();
 
     if (args.h || args.help) {
@@ -17,10 +15,13 @@ function run() {
     }
 
     try {
-        const output = compile(args.host, args.lib);
-        const reportFileName = storeCompilationReport(output[2]);
-        displaySummaryMessage(output[2], reportFileName);
+        const output = await compile(args.host, args.lib);
+        const compilerOutput = output[2].stdout;
+        const reportFileName = storeCompilationReport(compilerOutput);
+        if (args.v) { console.log(compilerOutput) }
+        displaySummaryMessage(compilerOutput, reportFileName);
     } catch (e) {
+        console.error('\n\n== Compilation Failed ==\n');
         console.error(e.message);
     }
 }
@@ -29,9 +30,10 @@ run();
 
 function help() {
     console.log('\nRemotely compiles your project on an IBM i and returns the result:\n\n' +
-        '-h        Display help\n' +
         '-c        Clear (delete) old compilation reports before running\n' +
         '-e        Use environment variables for HOST and LIB arguments\n' +
+        '-h        Display help\n' +
+        '-v        Print full compiler output to console\n' +
         '--host    Set the remote host to compile on. Compatible with openssh configured hosts\n' +
         '--lib     The Library on the IBM i where your objects will be created\n\n' +
         'Usage Example:\n' +
@@ -42,7 +44,7 @@ function help() {
         'node icompile.js -e');
 }
 
-function compile(host, lib) {
+async function compile(host, lib) {
     if (!host) {
         throw new Error("Host parameter is required. Use 'node icompile.js -h' for more information.");
     } else if (!lib) {
@@ -54,9 +56,9 @@ function compile(host, lib) {
     fs.writeFileSync('./.remote-build.sh', `#!/bin/bash\nexport LIB=${lib}\ncd make/${lib}\n/QOpenSys/pkgs/bin/gmake init\n/QOpenSys/pkgs/bin/gmake clean\n/QOpenSys/pkgs/bin/gmake`);
 
     const output = [];
-    output.push(execSync(`ssh ${host} 'mkdir -p make/${lib}'`, { stdio: 'pipe' }));
-    output.push(execSync(`scp Makefile .remote-build.sh *.rpgle ${host}:make/${lib}`, { stdio: 'pipe' }));
-    output.push(execSync(`ssh ${host} 'cd make/${lib}; .remote-build.sh'`, { stdio: 'pipe' }));
+    output.push(await new Promise(r => exec(`ssh ${host} 'mkdir -p make/${lib}'`, { stdio: 'pipe' }, (err, stdout, stderr) => r({err, stdout, stderr}))));
+    output.push(await new Promise(r => exec(`scp Makefile .remote-build.sh *.rpgle ${host}:make/${lib}`, { stdio: 'pipe' }, (err, stdout, stderr) => r({err, stdout, stderr}))));
+    output.push(await new Promise(r => exec(`ssh ${host} 'cd make/${lib}; .remote-build.sh'`, {stdio: 'pipe'}, (err, stdout, stderr) => r({err, stdout, stderr}))));
 
     return output;
 }
@@ -117,7 +119,7 @@ function displaySummaryMessage(output, reportFileName) {
 }
 
 function getMaxErrorSeverity(compilerOutput) {
-    return parseInt(compilerOutput.toString().match(/(\d{2}) highest severity/g).pop());
+    return parseInt((compilerOutput.toString().match(/ (\d{2}) /g) || []).pop());
 }
 
 function clearStoredReports() {
